@@ -1,0 +1,37 @@
+{
+  "name": "mathroom-hosted",
+  "version": "1.0.0",
+  "description": "Personal tutoring workspace: separate tutor/student interfaces, LaTeX papers, two-part assignments, shared reasoning photo uploads, grading, and chapter progress.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test local-review/tests/*.test.mjs tests/*.test.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "check:deploy": "npm run build && wrangler deploy --dry-run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wuewue/MathRoom.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Wuewue/MathRoom/issues"
+  },
+  "homepage": "https://github.com/Wuewue/MathRoom#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "fflate": "0.8.3",
+    "katex": "0.19.1",
+    "postgres": "4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.156.0",
+    "@babel/parser": "8.0.10",
+    "@babel/traverse": "8.0.10",
+    "@babel/generator": "8.0.10",
+    "@babel/types": "8.0.10"
+  },
+  "private": true
+}

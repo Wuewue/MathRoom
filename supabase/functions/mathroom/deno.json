@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "postgres": "npm:postgres@4.0.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.118.0",
+    "katex": "npm:katex@0.19.1",
+    "fflate": "npm:fflate@0.8.3"
+  }
+}
