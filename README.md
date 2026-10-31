@@ -25,7 +25,7 @@ The Supabase project is `ldfoexvqxxckxtmujazz`. Application data is in the priva
 
 Database migrations are versioned in `supabase/migrations/`. All application tables deny direct browser access. The API enforces tutor/student authorization. RLS's no-policy informational advisory is intentional for this server-only schema: [Supabase explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy). There are no public Storage policies.
 
-Before real student use: create the tutor in Supabase Authentication using the agreed email and a password of at least 10 characters, with email confirmation enabled. The preconfigured username is `tung`. Complete authenticated hosted testing, select local data to migrate, and review the site on a phone. Local review data has not been copied to the cloud.
+Before real student use: create the tutor in Supabase Authentication using the agreed email and a password of at least 10 characters, with email confirmation enabled. Sign in with the configured Supabase email and password. The preconfigured username `tung` also remains supported. Complete authenticated hosted testing, select local data to migrate, and review the site on a phone. Local review data has not been copied to the cloud.
 
 Admin-created student accounts use internal email identifiers and do not send email; students sign in with their tutor-provided usernames. Reset their passwords through the tutor interface. Creating a user in Supabase Auth alone does not grant app access: a matching private application profile is also required.
 

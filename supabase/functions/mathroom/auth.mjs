@@ -12,12 +12,14 @@ export function authRoutes({db,provider,publicProvider,send,readJson,requireThat
  return {authenticate,async handle(req,res,path){
   const method=req.method;
   if(path==='/api/login'&&method==='POST'){
-   const b=await readJson(req),name=typeof b.username==='string'?b.username.trim().toLowerCase():'';requireThat(name.length<=32&&typeof b.password==='string'&&b.password.length<=128,'Invalid username or password.',401);
-   const key=digest(name),now=Date.now(),limit=await one('SELECT * FROM login_limits WHERE key=?',key);requireThat(!limit||Number(limit.until_at)<=now||limit.count<8,'Too many attempts. Try again in 15 minutes.',429);
-   const u=await one('SELECT * FROM users WHERE username=?',name),identity=u?.active?await checkPassword(u.email,b.password):null;
+   const b=await readJson(req),input=b.email??b.username,name=typeof input==='string'?input.trim().toLowerCase():'';requireThat(name.length>0&&name.length<=254&&typeof b.password==='string'&&b.password.length<=128,'Invalid email, username or password.',401);
+   const u=name.includes('@')?await one('SELECT * FROM users WHERE lower(email)=?',name):await one('SELECT * FROM users WHERE username=?',name);
+   // Email and username aliases share a single attempt bucket.
+   const key=digest(u?'user:'+u.id:name),now=Date.now(),limit=await one('SELECT * FROM login_limits WHERE key=?',key);requireThat(!limit||Number(limit.until_at)<=now||limit.count<8,'Too many attempts. Try again in 15 minutes.',429);
+   const identity=u?.active?await checkPassword(u.email,b.password):null;
    if(!identity||!identity.email_confirmed_at||(u.auth_id&&u.auth_id!==identity.id)){
     await run('INSERT INTO login_limits(key,count,until_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',key,limit&&Number(limit.until_at)>now?limit.count+1:1,limit&&Number(limit.until_at)>now?Number(limit.until_at):now+900000);
-    return send(res,401,{error:'Invalid username or password.'});
+    return send(res,401,{error:'Invalid email, username or password.'});
    }
    if(!u.auth_id)await run('UPDATE users SET auth_id=? WHERE id=?',identity.id,u.id);
    await run('DELETE FROM login_limits WHERE key=?',key);await session(req,res,u);return send(res,200,{user:clean(u)});
