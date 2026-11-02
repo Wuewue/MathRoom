@@ -6,6 +6,7 @@ import {authRoutes} from './auth.mjs';
 import {assignmentRoutes} from './assignments.mjs';
 import {submissionRoutes} from './submissions.mjs';
 import {lessonRoutes} from './lessons.mjs';
+import {withReadRetry} from './read-retry.mjs';
 
 const env=name=>Deno.env.get(name);
 const secret=env('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(env('SUPABASE_SECRET_KEYS')||'{}').default;
@@ -33,7 +34,7 @@ Deno.serve(async request=>{
   if(request.method!=='GET')requireThat(request.headers.get('X-Mathroom-Request')==='1','Request verification failed.',403);
   const req={method:request.method,url:path+url.search,headers:Object.fromEntries(request.headers),async *[Symbol.asyncIterator](){if(request.body)for await(const chunk of request.body)yield Buffer.from(chunk)}};
   if(path==='/api/status'){send(res,200,{mode:'hosted',timezone:'Asia/Bangkok'});return new Response(body,{status,headers})}
-  await sql.begin(async tx=>{
+  await withReadRetry(request.method,()=>sql.begin(async tx=>{
    await tx.unsafe('SET LOCAL search_path TO mathroom,public');
    // A small single-tutor workspace serializes mutations to preserve attempt limits,
    // account limits, paper locks and lesson overlap checks across concurrent requests.
@@ -46,7 +47,7 @@ Deno.serve(async request=>{
    if(await submissionRoutes(options)(req,res,u,path))return;
    if(await lessonRoutes(options)(req,res,u,path))return;
    throw new HttpError(404,'This action is unavailable.');
-  });committed=true;
+  }));committed=true;
  }catch(e){const code=e.status||(['23505','23503','23514'].includes(e.code)?409:500);send(res,code,{error:e instanceof HttpError?e.message:code===409?'This record conflicts with existing data.': 'Unable to complete this request. Please try again.'});console.error(JSON.stringify({event:'request_failed',path,status:code,code:e.code||e.name,message:code===500?e.message:undefined}));}
  // Compensation after rollback; deletion failures are retained for retry on later writes.
  if(!committed&&uploaded.length){for(const p of uploaded){const {error}=await storage.remove([p]);if(error)await sql.unsafe('INSERT INTO mathroom.storage_cleanup(path) VALUES($1) ON CONFLICT DO NOTHING',[p])}}
