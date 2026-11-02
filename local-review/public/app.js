@@ -106,7 +106,7 @@ function assignmentEditor(){
   const active=state.students.filter(s=>s.active);
   if(a.status==='published')return heading(a.title,'Published · return to draft to make changes.',button('Cancel publication','unpublish',false,a.id),true)+'<div class="card">'+paperView(a)+'</div>';
   if(a.hasSubmissions)return heading(a.title,'Publication cancelled. Submitted work is preserved; this paper is locked against edits.',button('Republish assignment','republish',true,a.id),true)+'<div class="card">'+paperView(a)+'</div>';
-  return heading('Prepare your assignment','Save to update the equation and image previews.')+
+  return heading('Prepare your assignment','Save to update the equation and image previews.','<button type="button" class="btn" data-page="Assignments">Cancel editing</button>')+
     (a.warnings.length?'<div class="callout">'+a.warnings.map(esc).join('<br>')+'</div>':'')+
     '<form id="assignment-form"><div class="card"><div class="fields">'+input('Assignment title','title','text',a.title,'required maxlength="160"')+select('Chapter','chapter_id',[['','Choose chapter'],...state.chapters.map(c=>[c.id,c.number+' · '+c.title])],a.chapter_id||'','id="assignment-chapter"')+'</div>'+
     input('Deadline · Bangkok (UTC+7)','due_at','datetime-local',a.due_at?localDateTime(a.due_at):'')+
@@ -115,7 +115,7 @@ function assignmentEditor(){
       (q.type==='mc'?'<div class="fields">'+q.options.map((option,j)=>input('Option '+String.fromCharCode(65+j),'opt'+i,'text',option,'maxlength="2000"')).join('')+'</div>'+select('Correct answer','correct'+i,[['','Choose correct answer'],...q.options.map((_,j)=>[j,'Option '+String.fromCharCode(65+j)])],q.correctIndex??''):'<p class="notice">Students upload one shared set of photos for all reasoning questions. Two submissions maximum; the latest replaces the first.</p>')+
       '<div class="question-preview"><span class="qnum">Last saved preview</span><div class="paper-content">'+(q.html||'<p class="notice">Save to render this question.</p>')+'</div></div>'+
       (q.issues?.length?'<div class="import-error">'+q.issues.map(esc).join('<br>')+'</div>':'')+'</section>').join('')+
-    '<div class="card editor-actions"><div class="toolbar">'+button('+ Add question','question-add')+'<button class="btn primary" type="submit">Save & update preview</button>'+button('Student preview','paper-preview')+button('Publish assignment','publish',true)+'</div><p class="form-error" role="alert"></p><p class="notice">Publishing requires a chapter, deadline, assigned students, valid equations/images, and complete answer keys. Late submissions are accepted and labelled.</p></div></form>';
+    '<div class="card editor-actions"><div class="toolbar">'+button('Cancel editing','cancel-editing')+(a.questions.length===1?button('Split questions automatically','reparse',false,a.id):'')+button('+ Add question','question-add')+'<button class="btn primary" type="submit">Save & update preview</button>'+button('Student preview','paper-preview')+button('Publish assignment','publish',true)+'</div><p class="form-error" role="alert"></p><p class="notice">Publishing requires a chapter, deadline, assigned students, valid equations/images, and complete answer keys. Late submissions are accepted and labelled.</p></div></form>';
 }
 function paperView(a){
   return '<p class="subtitle">'+a.questions.length+' questions · '+a.totalPoints+' points'+(a.due_at?' · Due '+niceDate(a.due_at)+' '+timeLabel(a.due_at)+' Bangkok':'')+'</p>'+
@@ -226,6 +226,8 @@ document.addEventListener('click',async event=>{
     if(a==='question-add'){collectEditor();state.editor.questions.push({source:'New question.',type:'reasoning',points:1,options:['','','',''],correctIndex:null});state.editorDirty=true;render()}
     if(a==='question-remove'){collectEditor();state.editor.questions.splice(id,1);state.editorDirty=true;render()}
     if(a==='question-up'){collectEditor();[state.editor.questions[id-1],state.editor.questions[id]]=[state.editor.questions[id],state.editor.questions[id-1]];state.editorDirty=true;render()}
+    if(a==='cancel-editing'){if(state.editorDirty&&!confirmAction('Leave without saving your changes?'))return;state.editorDirty=false;state.page='Assignments';render()}
+    if(a==='reparse'){await saveAssignment();const r=await api('/assignments/'+id+'/reparse','POST',{});state.editor=r.assignment;state.editorDirty=false;state.assignments=(await api('/assignments')).assignments;render()}
     if(a==='paper-preview'){const paper=await saveAssignment();modal('Student preview: '+paper.title,'<p class="notice">Answers selected here are for preview only and are not saved.</p>'+paperView(paper))}
     if(a==='publish'){const paper=await saveAssignment();await api('/assignments/'+paper.id+'/publish','POST',{});await openAssignment(paper.id);toast('Published to the assigned students.');state.assignments=(await api('/assignments')).assignments}
     if(a==='republish'){await api('/assignments/'+id+'/publish','POST',{});await openAssignment(id);state.assignments=(await api('/assignments')).assignments;render()}

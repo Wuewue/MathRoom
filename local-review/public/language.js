@@ -9,6 +9,9 @@ Republish assignment|Giao lại bài
 Publication cancelled. Student work is preserved.|Đã hủy giao bài. Bài làm của học sinh được giữ lại.
 Hide this assignment from students? Submitted work and grades will be preserved.|Ẩn bài tập này khỏi học sinh? Bài làm và điểm số sẽ được giữ lại.
 Publication cancelled. Submitted work is preserved; this paper is locked against edits.|Đã hủy giao bài. Bài làm được giữ lại; đề đã khóa chỉnh sửa.
+Cancel editing|Hủy chỉnh sửa
+Split questions automatically|Tự động tách câu hỏi
+Missing backslashes in question commands were restored. Review the questions and equations before publishing.|Đã khôi phục dấu gạch chéo trong lệnh câu hỏi. Hãy kiểm tra câu hỏi và công thức trước khi giao bài.
 Overview|Tổng quan
 Mathroom · Phase 4 review|Mathroom · Bản dùng thử giai đoạn 4
 Lessons and notes saved on this computer.|Buổi học và ghi chú được lưu trên máy tính này.

@@ -94,5 +94,13 @@ test('assignment draft, edit, publication, image authorization, and answer-key p
     assert.equal((await admin('/assignments/'+a.id+'/publish','POST',{})).status,400);
     assert.equal((await fetch(base+'/katex/katex.min.css')).status,200);
     assert.equal((await fetch(base+'/katex/fonts/KaTeX_Main-Regular.woff2')).status,200);
+    const repair=(await admin('/assignments','POST',{})).body.assignment;
+    repair.questions[0].source='begin{questions}\nquestion First\nbegin{choices}\nchoice A\nCorrectChoice B\nend{choices}\nquestion Explain\nend{questions}';
+    await admin('/assignments/'+repair.id,'PUT',repair);
+    assert.equal((await student('/assignments/'+repair.id+'/reparse','POST',{})).status,404);
+    const fixed=await admin('/assignments/'+repair.id+'/reparse','POST',{});
+    assert.equal(fixed.status,200);assert.deepEqual(fixed.body.assignment.questions.map(q=>q.type),['mc','reasoning']);
+    assert.equal(fixed.body.assignment.questions[0].correctIndex,1);
+    assert.equal((await admin('/assignments/'+repair.id+'/reparse','POST',{})).status,400);
   }finally{await app.close()}
 });

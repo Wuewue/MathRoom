@@ -15,6 +15,16 @@ const mixed=String.raw`\begin{questions}
 \question Solve $2x+3=11$. Show your working.
 \begin{enumerate}\item Explain.\item Check.\end{enumerate}
 \end{questions}`;
+test('reported paper with missing structural backslashes splits into 30 questions',()=>{
+  const paper=importPaper('paper.tex',readFileSync(new URL('./fixtures/missing-backslashes.tex',import.meta.url)));
+  assert.equal(paper.questions.length,30);
+  assert.equal(paper.questions.filter(q=>q.type==='mc').length,19);
+  assert.equal(paper.questions.filter(q=>q.type==='reasoning').length,11);
+  assert.ok(paper.questions.filter(q=>q.type==='mc').every(q=>q.options.length===4&&Number.isInteger(q.correctIndex)));
+  assert.ok(paper.warnings.some(w=>w.includes('backslashes')));
+  assert.ok(renderQuestion(paper.questions[25].source).issues.length,'unfinished percentage math must still be reviewed');
+  assert.equal(splitQuestions('A question about choice and reasoning.')[0].source,'A question about choice and reasoning.');
+});
 test('mixed import extracts choices and answer, preserves reasoning and points',()=>{
   const q=splitQuestions(mixed);
   assert.equal(q.length,2);assert.equal(q[0].type,'mc');assert.equal(q[0].points,2);

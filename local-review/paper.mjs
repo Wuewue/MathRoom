@@ -39,7 +39,14 @@ function parseQuestion(source){
   question.correctIndex=correct.length===1?correct[0]:null;
   return question;
 }
+export function normalizePaper(source){
+  // Recover only line-leading structural markers inside an explicit questions wrapper.
+  // Ordinary prose and math commands remain untouched for the tutor to review.
+  if(!/^\s*begin\{questions\}/m.test(source)||!/^\s*end\{questions\}/m.test(source))return source;
+  return source.replace(/^(\s*)(?:(begin|end)(\{(?:questions|choices|oneparchoices)\})|(question|choice|CorrectChoice)\b)/gm,(_,space,env,group,command)=>space+'\\'+(command||env+group));
+}
 export function splitQuestions(source){
+  source=normalizePaper(source);
   source=source.replace(/(?<!\\)%[^\n]*/g,'');
   const document=source.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
   let body=(document?document[1]:source).replace(/\\maketitle\b/g,'').trim();
@@ -76,6 +83,7 @@ export function importPaper(filename,data){
   check(!source.includes('\0'),'The LaTeX file must be UTF-8 text.');
   const title=source.match(/\\title\{([^}]*)\}/)?.[1]||filename.replace(/\.(tex|zip)$/i,'');
   if(/\\(?:newcommand|renewcommand|def|input|include|usepackage)/.test(source))warnings.push('Custom macros, included TeX files, and package-specific layouts are not executed. Review the rendered questions.');
+  if(normalizePaper(source)!==source)warnings.push('Missing backslashes in question commands were restored. Review the questions and equations before publishing.');
   const questions=splitQuestions(source);
   if(questions.some(q=>q.type==='mc'&&q.correctIndex===null))warnings.push('Some multiple-choice questions need exactly one correct answer. Select it before publishing.');
   return {title,questions,images,baseDir:texPath?posix.dirname(texPath):'.',warnings};

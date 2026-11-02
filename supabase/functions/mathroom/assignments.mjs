@@ -1,5 +1,5 @@
 import {Buffer} from 'node:buffer';
-import { importPaper, renderQuestion } from './paper.mjs';
+import { importPaper, renderQuestion, splitQuestions } from './paper.mjs';
 export function assignmentRoutes({
   db,
   readJson,
@@ -154,7 +154,7 @@ export function assignmentRoutes({
       res.end(row.data);
       return true;
     }
-    const match = path.match(/^\/api\/assignments\/(\d+)(\/publish|\/unpublish)?$/);
+    const match = path.match(/^\/api\/assignments\/(\d+)(\/publish|\/unpublish|\/reparse)?$/);
     if (!match) return false;
     const id = Number(match[1]),
       a = await one('SELECT * FROM assignments WHERE id=?', id);
@@ -181,6 +181,16 @@ export function assignmentRoutes({
       send(res, 200, {
         assignment: await detail(await one('SELECT * FROM assignments WHERE id=?', id), u)
       });
+      return true;
+    }
+    if (method === 'POST' && match[2] === '/reparse') {
+      requireThat(a.status === 'draft' && !(await one('SELECT 1 FROM responses WHERE assignment_id=?', id)), 'Only drafts without submissions can be split.', 409);
+      const old=JSON.parse(a.questions);
+      requireThat(old.length===1,'This paper already has multiple questions.');
+      const questions=splitQuestions(old[0].source);
+      requireThat(questions.length>1,'No question boundaries found. Use the LaTeX template.');
+      await run('UPDATE assignments SET questions=? WHERE id=?',JSON.stringify(questions),id);
+      send(res,200,{assignment:await detail(await one('SELECT * FROM assignments WHERE id=?',id),u)});
       return true;
     }
     if (method === 'POST' && match[2] === '/publish') {

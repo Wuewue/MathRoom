@@ -1,4 +1,4 @@
-import {importPaper,renderQuestion} from './paper.mjs';
+import {importPaper,renderQuestion,splitQuestions} from './paper.mjs';
 export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction}){
   db.exec(
     'CREATE TABLE IF NOT EXISTS assignments(id INTEGER PRIMARY KEY,title TEXT NOT NULL,chapter_id INTEGER REFERENCES chapters(id),due_at TEXT,status TEXT NOT NULL DEFAULT \'draft\',questions TEXT NOT NULL,base_dir TEXT NOT NULL DEFAULT \'.\',warnings TEXT NOT NULL DEFAULT \'[]\');'+
@@ -69,7 +69,7 @@ export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction
       requireThat(row&&allowed(row.assignment_id,u),'Image not found.',404);
       res.writeHead(200,{'Content-Type':row.mime,'Cache-Control':'private, no-store'});res.end(row.data);return true;
     }
-    const match=path.match(/^\/api\/assignments\/(\d+)(\/publish|\/unpublish)?$/);
+    const match=path.match(/^\/api\/assignments\/(\d+)(\/publish|\/unpublish|\/reparse)?$/);
     if(!match)return false;
     const id=Number(match[1]),a=one('SELECT * FROM assignments WHERE id=?',id);
     requireThat(a&&allowed(id,u),'Assignment not found.',404);
@@ -81,6 +81,12 @@ export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction
       const b=validate(await readJson(req));
       transaction(()=>{run('UPDATE assignments SET title=?,chapter_id=?,due_at=?,questions=? WHERE id=?',b.title,b.chapterId,b.due,JSON.stringify(b.questions),id);run('DELETE FROM assignment_students WHERE assignment_id=?',id);for(const s of b.ids){run('INSERT INTO assignment_students(assignment_id,student_id) VALUES(?,?)',id,s);if(b.chapterId)run('INSERT OR IGNORE INTO enrollments(student_id,chapter_id) VALUES(?,?)',s,b.chapterId)}});
       send(res,200,{assignment:detail(one('SELECT * FROM assignments WHERE id=?',id),u)});return true;
+    }
+    if(method==='POST'&&match[2]==='/reparse'){
+      requireThat(a.status==='draft'&&!one('SELECT 1 FROM responses WHERE assignment_id=?',id),'Only drafts without submissions can be split.',409);
+      const old=JSON.parse(a.questions);requireThat(old.length===1,'This paper already has multiple questions.');
+      const questions=splitQuestions(old[0].source);requireThat(questions.length>1,'No question boundaries found. Use the LaTeX template.');
+      run('UPDATE assignments SET questions=? WHERE id=?',JSON.stringify(questions),id);send(res,200,{assignment:detail(one('SELECT * FROM assignments WHERE id=?',id),u)});return true;
     }
     if(method==='POST'&&match[2]==='/publish'){
       const d=detail(a,u);validate(d,true);requireThat(d.questions.every(q=>q.issues.length===0),'Resolve the question preview errors before publishing.');
