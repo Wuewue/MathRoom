@@ -55,3 +55,9 @@ Cloudflare deployment uses `wrangler.jsonc`. Deploy the Supabase function from `
 - Chapter averages equally weight fully graded assignment percentages; missing/unmarked work is excluded.
 
 Keep database files, student photos, private backups and service credentials out of Git. Use provider secret configuration for hosted credentials.
+
+## Language
+
+Use the English / Tiếng Việt selector on the login screen or app header. The preference is saved per browser. Interface labels, status messages, confirmations and lesson-review headings support Vietnamese. Tutor comments, names, titles and question content remain exactly as authored; the app does not translate them automatically. Parents use the child’s existing account. Switching languages updates text in place without discarding draft forms, selected answers or photo drafts.
+
+Language checks use a simulated DOM, including persistence, status values, unchanged feedback and unsent work; no visual browser/mobile QA is claimed.
