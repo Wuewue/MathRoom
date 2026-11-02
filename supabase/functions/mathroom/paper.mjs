@@ -24,12 +24,27 @@ export function questionPoints(source){
   const values=top.length?top:nested,total=values.reduce((a,b)=>a+b,0);
   return total>0&&total<=100?total:1;
 }
+function parseQuestion(source){
+  const question={source,type:'reasoning',points:questionPoints(source),options:['','','',''],correctIndex:null};
+  const blocks=[...source.matchAll(/\\begin\{(choices|oneparchoices)\}([\s\S]*?)\\end\{\1\}/g)];
+  if(!blocks.length)return question;
+  check(blocks.length===1,'Use one choices block per multiple-choice question.');
+  const block=blocks[0],markers=[...block[2].matchAll(/\\(choice|CorrectChoice)\b/g)];
+  check(markers.length>=2&&markers.length<=6,'Multiple choice needs 2–6 options.');
+  check(!block[2].slice(0,markers[0].index).trim(),'Place choice text after a choice command.');
+  question.type='mc';
+  question.source=(source.slice(0,block.index)+source.slice(block.index+block[0].length)).trim();
+  question.options=markers.map((m,i)=>block[2].slice(m.index+m[0].length,markers[i+1]?.index??block[2].length).trim());
+  const correct=markers.flatMap((m,i)=>m[1]==='CorrectChoice'?[i]:[]);
+  question.correctIndex=correct.length===1?correct[0]:null;
+  return question;
+}
 export function splitQuestions(source){
   source=source.replace(/(?<!\\)%[^\n]*/g,'');
   const document=source.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
   let body=(document?document[1]:source).replace(/\\maketitle\b/g,'').trim();
   // Top-level question boundaries only: nested lists remain in their question.
-  const tokens=/\\(?:begin\{(enumerate|questions|itemize)\}|end\{(enumerate|questions|itemize)\}|(item|question)\b(?:\[[^\]]*\])?)/g;
+  const tokens=/\\(?:begin\{(enumerate|questions|itemize|choices|oneparchoices)\}|end\{(enumerate|questions|itemize|choices|oneparchoices)\}|(item|question)\b(?:\[[^\]]*\])?)/g;
   let depth=0,splitDepth=null,starts=[],match;
   while((match=tokens.exec(body))){
     if(match[1])depth++;
@@ -38,7 +53,7 @@ export function splitQuestions(source){
   }
   let items=starts.length?starts.map((s,i)=>body.slice(s.end,starts[i+1]?.start||body.length).replace(/\\end\{(?:enumerate|questions)\}\s*$/,'').trim()):[body];
   check(items.length>0&&items.length<=100,'A paper must contain 1–100 questions.');
-  return items.map(source=>({source,type:'reasoning',points:questionPoints(source),options:['','','',''],correctIndex:null}));
+  return items.map(parseQuestion);
 }
 export function importPaper(filename,data){
   check(data.length<=20*1024*1024,'Upload a file no larger than 20 MB.');
@@ -61,7 +76,9 @@ export function importPaper(filename,data){
   check(!source.includes('\0'),'The LaTeX file must be UTF-8 text.');
   const title=source.match(/\\title\{([^}]*)\}/)?.[1]||filename.replace(/\.(tex|zip)$/i,'');
   if(/\\(?:newcommand|renewcommand|def|input|include|usepackage)/.test(source))warnings.push('Custom macros, included TeX files, and package-specific layouts are not executed. Review the rendered questions.');
-  return {title,questions:splitQuestions(source),images,baseDir:texPath?posix.dirname(texPath):'.',warnings};
+  const questions=splitQuestions(source);
+  if(questions.some(q=>q.type==='mc'&&q.correctIndex===null))warnings.push('Some multiple-choice questions need exactly one correct answer. Select it before publishing.');
+  return {title,questions,images,baseDir:texPath?posix.dirname(texPath):'.',warnings};
 }
 export function renderQuestion(source,assets=[],baseDir='.'){
   const issues=[];

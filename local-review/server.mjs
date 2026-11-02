@@ -145,7 +145,7 @@ export function createApp({ dbPath = process.env.MATHROOM_DB || join(root, '..',
           res.setHeader('Content-Type',pathname.endsWith('.css')?'text/css':pathname.endsWith('.woff2')?'font/woff2':pathname.endsWith('.woff')?'font/woff':'font/ttf');
           res.end(method==='HEAD'?'':readFileSync(file));return;
         }
-        const files={'/':'index.html','/style.css':'style.css','/app.js':'app.js','/theme.js':'theme.js','/language.js':'language.js','/favicon.svg':'favicon.svg'};
+        const files={'/':'index.html','/style.css':'style.css','/app.js':'app.js','/theme.js':'theme.js','/language.js':'language.js','/favicon.svg':'favicon.svg','/assignment-template.tex':'assignment-template.tex'};
         requireThat(files[pathname],'Page not found.',404);
         const file=join(root,'public',files[pathname]);
         requireThat(existsSync(file),'Page not found.',404);

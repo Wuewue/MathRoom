@@ -1,6 +1,9 @@
 (function () {
   'use strict';
   const dictionary = Object.fromEntries(`
+Download LaTeX template|Tải mẫu LaTeX
+Choices blocks automatically create multiple-choice questions. Use CorrectChoice for the answer. Questions without choices become reasoning.|Khối choices tự động tạo câu hỏi trắc nghiệm. Dùng CorrectChoice để đánh dấu đáp án đúng. Câu hỏi không có choices sẽ là câu tự luận.
+Some multiple-choice questions need exactly one correct answer. Select it before publishing.|Một số câu trắc nghiệm cần đúng một đáp án đúng. Hãy chọn trước khi giao bài.
 Overview|Tổng quan
 Mathroom · Phase 4 review|Mathroom · Bản dùng thử giai đoạn 4
 Lessons and notes saved on this computer.|Buổi học và ghi chú được lưu trên máy tính này.
