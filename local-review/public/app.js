@@ -97,14 +97,15 @@ function assignmentList(){
   return heading('Assignments',isAdmin()?'Import your paper, prepare questions, then publish.':'Papers assigned to you by your tutor.',isAdmin()?'<div class="toolbar">'+button('+ New assignment','new-assignment')+button('Upload LaTeX','upload-paper',true)+'</div>':'')+
     '<div class="card">'+(state.assignments.length?state.assignments.map(a=>{
       const chapter=state.chapters.find(c=>c.id===a.chapter_id);
-      return '<div class="assignment"><div class="assignment-icon">∑</div><div class="assignment-body"><h3>'+userText(a.title)+'</h3><p>'+(chapter?'Chapter '+chapter.number+' · ':'')+a.questionCount+' questions · '+a.totalPoints+' points</p><p>'+(a.due_at?'Due '+niceDate(a.due_at)+' at '+timeLabel(a.due_at)+' Bangkok':'No deadline yet')+'</p></div>'+tag(a.status,a.status==='draft'?'gray':'')+button(isAdmin()?'Open':'Do assignment','open-assignment',false,a.id)+'</div>';
+      return '<div class="assignment"><div class="assignment-icon">∑</div><div class="assignment-body"><h3>'+userText(a.title)+'</h3><p>'+(chapter?'Chapter '+chapter.number+' · ':'')+a.questionCount+' questions · '+a.totalPoints+' points</p><p>'+(a.due_at?'Due '+niceDate(a.due_at)+' at '+timeLabel(a.due_at)+' Bangkok':'No deadline yet')+'</p></div>'+tag(a.status,a.status==='draft'?'gray':'')+(isAdmin()&&a.status==='published'?button('Cancel publication','unpublish',false,a.id):'')+button(isAdmin()?'Open':'Do assignment','open-assignment',false,a.id)+'</div>';
     }).join(''):empty('No assignments yet.',isAdmin()?'Upload a .tex file or a ZIP containing your paper and images.':'Your tutor will publish assignments here.'))+'</div>'+
     (!isAdmin()?'<div class="callout">Submit your answers and view tutor feedback.</div>':'');
 }
 function assignmentEditor(){
   const a=state.editor;if(!a)return assignmentList();
   const active=state.students.filter(s=>s.active);
-  if(a.status==='published')return heading(a.title,'Published · return to draft to make changes.',button('Return to draft','unpublish',false,a.id),true)+'<div class="card">'+paperView(a)+'</div>';
+  if(a.status==='published')return heading(a.title,'Published · return to draft to make changes.',button('Cancel publication','unpublish',false,a.id),true)+'<div class="card">'+paperView(a)+'</div>';
+  if(a.hasSubmissions)return heading(a.title,'Publication cancelled. Submitted work is preserved; this paper is locked against edits.',button('Republish assignment','republish',true,a.id),true)+'<div class="card">'+paperView(a)+'</div>';
   return heading('Prepare your assignment','Save to update the equation and image previews.')+
     (a.warnings.length?'<div class="callout">'+a.warnings.map(esc).join('<br>')+'</div>':'')+
     '<form id="assignment-form"><div class="card"><div class="fields">'+input('Assignment title','title','text',a.title,'required maxlength="160"')+select('Chapter','chapter_id',[['','Choose chapter'],...state.chapters.map(c=>[c.id,c.number+' · '+c.title])],a.chapter_id||'','id="assignment-chapter"')+'</div>'+
@@ -227,7 +228,8 @@ document.addEventListener('click',async event=>{
     if(a==='question-up'){collectEditor();[state.editor.questions[id-1],state.editor.questions[id]]=[state.editor.questions[id],state.editor.questions[id-1]];state.editorDirty=true;render()}
     if(a==='paper-preview'){const paper=await saveAssignment();modal('Student preview: '+paper.title,'<p class="notice">Answers selected here are for preview only and are not saved.</p>'+paperView(paper))}
     if(a==='publish'){const paper=await saveAssignment();await api('/assignments/'+paper.id+'/publish','POST',{});await openAssignment(paper.id);toast('Published to the assigned students.');state.assignments=(await api('/assignments')).assignments}
-    if(a==='unpublish'){await api('/assignments/'+id+'/unpublish','POST',{});await openAssignment(id);state.assignments=(await api('/assignments')).assignments}
+    if(a==='republish'){await api('/assignments/'+id+'/publish','POST',{});await openAssignment(id);state.assignments=(await api('/assignments')).assignments;render()}
+    if(a==='unpublish'){if(!confirmAction('Hide this assignment from students? Submitted work and grades will be preserved.'))return;await api('/assignments/'+id+'/unpublish','POST',{});await openAssignment(id);state.assignments=(await api('/assignments')).assignments;render()}
     if(a==='close')closeModal();
     if(a==='logout'){await api('/logout','POST',{});state.user=null;closeModal();authScreen()}
     if(a==='new-student')studentForm();

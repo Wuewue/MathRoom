@@ -39,6 +39,19 @@ test('assignment paper, selected answers and photo drafts survive the language s
   const radio=h.w.document.querySelector('input[value="1"]');h.switch('vi');assert.equal(radio.checked,true);assert.equal(h.run('state.photoDrafts.all[0].file.name'),'photo.jpg');assert.equal(h.w.document.querySelector('h1').textContent,'Progress');assert.equal(h.w.document.querySelector('.paper-content').textContent,'Question 2');assert.match(h.text(),/Good progress/);assert.match(h.text(),/Phần 1 · Trắc nghiệm/);
  }finally{h.dom.window.close()}
 });
+test('chapter selection keeps numeric IDs through translation, change and collection',()=>{
+ const h=harness();try{
+  h.run(`state.user={id:1,name:'Tutor',role:'admin'};state.page='Editor';state.students=[];state.chapters=[{id:7,number:1,title:'Algebra'},{id:12,number:2,title:'Geometry'}];state.editor={id:3,title:'Paper',chapter_id:7,status:'draft',warnings:[],studentIds:[],questions:[]};render()`);
+  for(const language of ['en','vi','en']){
+   h.switch(language);let chapter=h.w.document.querySelector('#assignment-chapter');
+   assert.deepEqual([...chapter.options].map(o=>o.value),['','7','12']);
+   chapter.value='12';chapter.dispatchEvent(new h.w.Event('change',{bubbles:true}));h.switch(language);
+   assert.equal(h.run('state.editor.chapter_id'),12);
+   assert.equal(h.w.document.querySelector('#assignment-chapter').value,'12');
+   h.run('collectEditor()');assert.equal(h.run('state.editor.chapter_id'),12);
+  }
+ }finally{h.dom.window.close()}
+});
 test('late dynamic errors are translated, and unsupported languages are ignored',async()=>{
  const h=harness();try{h.switch('vi');h.run(`toast('Invalid email, username or password.')`);await new Promise(r=>setTimeout(r,10));assert.equal(h.w.document.querySelector('#toast').textContent,'Email, tên đăng nhập hoặc mật khẩu không đúng.');h.switch('xx');assert.equal(h.w.mathroomLanguage.get(),'vi');assert.equal(h.w.mathroomLanguage.translate('Wait for A Tung review'),'Chờ anh Tùng chấm bài')}finally{h.dom.window.close()}
 });

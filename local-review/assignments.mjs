@@ -16,6 +16,7 @@ export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction
     });
     const result={...a,questions,warnings:JSON.parse(a.warnings),totalPoints:questions.reduce((n,q)=>n+q.points,0)};
     if(u.role==='admin')result.studentIds=all('SELECT student_id FROM assignment_students WHERE assignment_id=?',a.id).map(s=>s.student_id);
+    if(u.role==='admin')result.hasSubmissions=!!one('SELECT 1 FROM responses WHERE assignment_id=?',a.id);
     delete result.base_dir;return result;
   }
   function validate(b,publish=false){
@@ -76,6 +77,7 @@ export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction
     admin(u);
     if(method==='PUT'&&!match[2]){
       requireThat(a.status==='draft','Return this assignment to draft before editing.',409);
+      requireThat(!one('SELECT 1 FROM responses WHERE assignment_id=?',id),'Students have submitted work. This paper is locked to protect their results. Create a new assignment for changes.',409);
       const b=validate(await readJson(req));
       transaction(()=>{run('UPDATE assignments SET title=?,chapter_id=?,due_at=?,questions=? WHERE id=?',b.title,b.chapterId,b.due,JSON.stringify(b.questions),id);run('DELETE FROM assignment_students WHERE assignment_id=?',id);for(const s of b.ids){run('INSERT INTO assignment_students(assignment_id,student_id) VALUES(?,?)',id,s);if(b.chapterId)run('INSERT OR IGNORE INTO enrollments(student_id,chapter_id) VALUES(?,?)',s,b.chapterId)}});
       send(res,200,{assignment:detail(one('SELECT * FROM assignments WHERE id=?',id),u)});return true;
@@ -85,7 +87,6 @@ export function assignmentRoutes({db,readJson,send,requireThat,admin,transaction
       run('UPDATE assignments SET status=\'published\' WHERE id=?',id);send(res,200,{ok:true});return true;
     }
     if(method==='POST'&&match[2]==='/unpublish'){
-      requireThat(!one('SELECT 1 FROM responses WHERE assignment_id=?',id),'Students have submitted work. This paper is locked to protect their results. Create a new assignment for changes.',409);
       run('UPDATE assignments SET status=\'draft\' WHERE id=?',id);send(res,200,{ok:true});return true;
     }
     return false;

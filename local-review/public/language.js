@@ -4,6 +4,11 @@
 Download LaTeX template|Tải mẫu LaTeX
 Choices blocks automatically create multiple-choice questions. Use CorrectChoice for the answer. Questions without choices become reasoning.|Khối choices tự động tạo câu hỏi trắc nghiệm. Dùng CorrectChoice để đánh dấu đáp án đúng. Câu hỏi không có choices sẽ là câu tự luận.
 Some multiple-choice questions need exactly one correct answer. Select it before publishing.|Một số câu trắc nghiệm cần đúng một đáp án đúng. Hãy chọn trước khi giao bài.
+Cancel publication|Hủy giao bài
+Republish assignment|Giao lại bài
+Publication cancelled. Student work is preserved.|Đã hủy giao bài. Bài làm của học sinh được giữ lại.
+Hide this assignment from students? Submitted work and grades will be preserved.|Ẩn bài tập này khỏi học sinh? Bài làm và điểm số sẽ được giữ lại.
+Publication cancelled. Submitted work is preserved; this paper is locked against edits.|Đã hủy giao bài. Bài làm được giữ lại; đề đã khóa chỉnh sửa.
 Overview|Tổng quan
 Mathroom · Phase 4 review|Mathroom · Bản dùng thử giai đoạn 4
 Lessons and notes saved on this computer.|Buổi học và ghi chú được lưu trên máy tính này.
@@ -420,12 +425,12 @@ Students have submitted work. This paper is locked to protect their results. Cre
     });
     document.documentElement.lang=language;
     document.title=language==='vi'?'Mathroom · Không gian học tập':'Mathroom · Your teaching workspace';
-    document.querySelectorAll('[data-language-switch], #student-filter option, #progress-student option, #lesson-student option, select[name=chapter_id] option:not([value=""]), select[name=chapterId] option').forEach(el=>{el.value=language});
+    document.querySelectorAll('[data-language-switch]').forEach(el=>{el.value=language});
   }
   let observer;
   function refresh(){observer?.disconnect();apply();observer?.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-label','alt']})}
   function setLanguage(value){if(!['en','vi'].includes(value))return;language=value;try{localStorage.setItem('mathroom-language',value)}catch{}refresh()}
   window.mathroomLanguage={translate,set:setLanguage,get:()=>language,refresh};
-  document.addEventListener('change',event=>{if(event.target.matches('[data-language-switch], #student-filter option, #progress-student option, #lesson-student option, select[name=chapter_id] option:not([value=""]), select[name=chapterId] option'))setLanguage(event.target.value)});
+  document.addEventListener('change',event=>{if(event.target.matches('[data-language-switch]'))setLanguage(event.target.value)});
   document.addEventListener('DOMContentLoaded',()=>{observer=new MutationObserver(refresh);refresh()});
 })();

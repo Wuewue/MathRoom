@@ -14,7 +14,7 @@ test('submission lifecycle: privacy, deferred answer reveal, shared photos, atte
   assert.equal((await other(path)).status,404);assert.equal((await student(path)).body.result.items[0].correctIndex,undefined);
   assert.equal((await student(path+'/mc','POST',{answers:[9]})).status,400);
   let r=await student(path+'/mc','POST',{answers:[0]});assert.equal(r.body.result.items[0].score,null);assert.equal(r.body.result.items[0].correctIndex,undefined);assert.equal((await student('/results')).body.results[0].items[0].correctIndex,undefined);assert.equal(r.body.result.percentage,null);assert.equal(r.body.result.late,true);
-  assert.equal((await student(path+'/mc','POST',{answers:[1]})).status,409);assert.equal((await tutor('/assignments/'+a.id+'/unpublish','POST',{})).status,409);
+  assert.equal((await student(path+'/mc','POST',{answers:[1]})).status,409);assert.equal((await tutor('/assignments/'+a.id+'/unpublish','POST',{})).status,200);assert.equal((await student(path)).status,404);assert.equal((await tutor('/assignments/'+a.id,'PUT',a)).status,409);assert.equal((await tutor('/assignments/'+a.id+'/publish','POST',{})).status,200);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=','base64');
   function photos(attempt,valid=true){const f=new FormData();f.set('index','1');f.set('attempt',String(attempt));f.append('photos',new Blob([valid?png:Buffer.from('bad')],{type:'image/png'}),'work.png');return f}
   assert.equal((await student(path+'/photo','POST',photos(0,false))).status,400);

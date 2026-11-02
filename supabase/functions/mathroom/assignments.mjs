@@ -35,7 +35,10 @@ export function assignmentRoutes({
       warnings: JSON.parse(a.warnings),
       totalPoints: questions.reduce((n, q) => n + q.points, 0)
     };
-    if (u.role === 'admin') result.studentIds = (await all('SELECT student_id FROM assignment_students WHERE assignment_id=?', a.id)).map(s => s.student_id);
+      if (u.role === 'admin') {
+        result.studentIds = (await all('SELECT student_id FROM assignment_students WHERE assignment_id=?', a.id)).map(s => s.student_id);
+        result.hasSubmissions = !!(await one('SELECT 1 FROM responses WHERE assignment_id=?', a.id));
+      }
     delete result.base_dir;
     return result;
   }
@@ -165,6 +168,7 @@ export function assignmentRoutes({
     admin(u);
     if (method === 'PUT' && !match[2]) {
       requireThat(a.status === 'draft', 'Return this assignment to draft before editing.', 409);
+      requireThat(!(await one('SELECT 1 FROM responses WHERE assignment_id=?', id)), 'Students have submitted work. This paper is locked to protect their results. Create a new assignment for changes.', 409);
       const b = await validate(await readJson(req));
       await transaction(async () => {
         await run('UPDATE assignments SET title=?,chapter_id=?,due_at=?,questions=? WHERE id=?', b.title, b.chapterId, b.due, JSON.stringify(b.questions), id);
@@ -190,7 +194,6 @@ export function assignmentRoutes({
       return true;
     }
     if (method === 'POST' && match[2] === '/unpublish') {
-      requireThat(!(await one('SELECT 1 FROM responses WHERE assignment_id=?', id)), 'Students have submitted work. This paper is locked to protect their results. Create a new assignment for changes.', 409);
       await run('UPDATE assignments SET status=\'draft\' WHERE id=?', id);
       send(res, 200, {
         ok: true
