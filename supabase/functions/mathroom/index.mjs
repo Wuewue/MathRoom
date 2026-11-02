@@ -7,23 +7,24 @@ import {assignmentRoutes} from './assignments.mjs';
 import {submissionRoutes} from './submissions.mjs';
 import {lessonRoutes} from './lessons.mjs';
 import {withReadRetry} from './read-retry.mjs';
+import {withConnection} from './connection.mjs';
 
 const env=name=>Deno.env.get(name);
 const secret=env('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(env('SUPABASE_SECRET_KEYS')||'{}').default;
 const publishable=env('SUPABASE_ANON_KEY')||JSON.parse(env('SUPABASE_PUBLISHABLE_KEYS')||'{}').default;
 const provider=createClient(env('SUPABASE_URL'),secret,{auth:{persistSession:false,autoRefreshToken:false}});
 const publicProvider=()=>createClient(env('SUPABASE_URL'),publishable,{auth:{persistSession:false,autoRefreshToken:false}});
-const sql=postgres(env('SUPABASE_DB_URL'),{prepare:false,max:3,idle_timeout:20,connect_timeout:10,ssl:'require'});
+const connect=()=>postgres(env('SUPABASE_DB_URL'),{prepare:false,max:1,idle_timeout:20,connect_timeout:10,ssl:'require'});
 const storage=provider.storage.from('mathroom-private');
 class HttpError extends Error{constructor(status,message){super(message);this.status=status}}
 function requireThat(ok,message,status=400){if(!ok)throw new HttpError(status,message)}
 async function readJson(req){requireThat((req.headers['content-type']||'').startsWith('application/json'),'Send JSON.',415);const chunks=[];let size=0;for await(const c of req){size+=c.length;requireThat(size<=1048576,'Request too large.',413);chunks.push(c)}try{const b=JSON.parse(Buffer.concat(chunks).toString());requireThat(b&&typeof b==='object'&&!Array.isArray(b),'Send a JSON object.');return b}catch(e){if(e instanceof HttpError)throw e;throw new HttpError(400,'Invalid JSON.')}}
 const admin=u=>requireThat(u.role==='admin','Tutor access required.',403);
-async function cleanup(){
+async function cleanup(sql){
  const rows=await sql.unsafe('SELECT path FROM mathroom.storage_cleanup ORDER BY created_at LIMIT 50');
  for(const row of rows){const {error}=await storage.remove([row.path]);if(!error)await sql.unsafe('DELETE FROM mathroom.storage_cleanup WHERE path=$1',[row.path])}
 }
-Deno.serve(async request=>{
+Deno.serve(request=>withConnection(connect,async sql=>{
  const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}),url=new URL(request.url),path=url.pathname.replace(/^\/functions\/v1\/mathroom/,'').replace(/^\/mathroom/,'');
  let status=200,body='',committed=false;const uploaded=[];
  const res={setHeader:(k,v)=>headers.set(k,v),writeHead:(s,h)=>{status=s;for(const [k,v]of Object.entries(h||{}))headers.set(k,v)},end:b=>{body=b??''}};
@@ -51,6 +52,6 @@ Deno.serve(async request=>{
  }catch(e){const code=e.status||(['23505','23503','23514'].includes(e.code)?409:500);send(res,code,{error:e instanceof HttpError?e.message:code===409?'This record conflicts with existing data.': 'Unable to complete this request. Please try again.'});console.error(JSON.stringify({event:'request_failed',path,status:code,code:e.code||e.name,message:code===500?e.message:undefined}));}
  // Compensation after rollback; deletion failures are retained for retry on later writes.
  if(!committed&&uploaded.length){for(const p of uploaded){const {error}=await storage.remove([p]);if(error)await sql.unsafe('INSERT INTO mathroom.storage_cleanup(path) VALUES($1) ON CONFLICT DO NOTHING',[p])}}
- if(request.method!=='GET'){try{await cleanup()}catch{console.error(JSON.stringify({event:'storage_cleanup_retry_pending'}))}}
+ if(request.method!=='GET'){try{await cleanup(sql)}catch{console.error(JSON.stringify({event:'storage_cleanup_retry_pending'}))}}
  return new Response(body,{status,headers});
-});
+}));

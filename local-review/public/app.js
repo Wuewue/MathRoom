@@ -153,7 +153,9 @@ async function importSelectedPaper(files){
   try{
     const response=await fetch('/api/assignments/import',{method:'POST',headers:{'X-Mathroom-Request':'1','X-File-Name':encodeURIComponent(file.name)},body:file});
     const data=await response.json();if(!response.ok)throw new Error(data.error||'Unable to import this paper.');
-    state.editor=data.assignment;state.editorDirty=false;state.page='Editor';closeModal();await refresh();toast('Paper imported as a draft. Review every question before publishing.');
+    state.editor=data.assignment;state.editorDirty=false;state.page='Editor';closeModal();render();
+    try{state.assignments=(await api('/assignments')).assignments}catch{ /* The import already committed; keep its editor visible. */ }
+    toast('Paper imported as a draft. Review every question before publishing.');
   }catch(error){status.textContent=error.message;if(!$('#dialog').open)toast(error.message)}
   finally{paperImportBusy=false;picker.disabled=false;picker.value='';zone.removeAttribute('aria-busy')}
 }

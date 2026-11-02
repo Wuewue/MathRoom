@@ -52,6 +52,15 @@ test('chapter selection keeps numeric IDs through translation, change and collec
   }
  }finally{h.dom.window.close()}
 });
+test('successful import stays open when the subsequent assignment list refresh fails',async()=>{
+ const h=harness();try{
+  h.run('uploadPaper();render=()=>{};api=async()=>{throw new Error("list unavailable")}');
+  h.w.fetch=async()=>({ok:true,json:async()=>({assignment:{id:90,title:'Imported paper',questions:[]}})});
+  await h.run('importSelectedPaper([{name:"paper.tex",size:100}])');
+  assert.equal(h.run('state.editor.id'),90);assert.equal(h.run('state.page'),'Editor');
+  assert.match(h.w.document.querySelector('#toast').textContent,/Paper imported as a draft/);
+ }finally{h.dom.window.close()}
+});
 test('late dynamic errors are translated, and unsupported languages are ignored',async()=>{
  const h=harness();try{h.switch('vi');h.run(`toast('Invalid email, username or password.')`);await new Promise(r=>setTimeout(r,10));assert.equal(h.w.document.querySelector('#toast').textContent,'Email, tên đăng nhập hoặc mật khẩu không đúng.');h.switch('xx');assert.equal(h.w.mathroomLanguage.get(),'vi');assert.equal(h.w.mathroomLanguage.translate('Wait for A Tung review'),'Chờ anh Tùng chấm bài')}finally{h.dom.window.close()}
 });
